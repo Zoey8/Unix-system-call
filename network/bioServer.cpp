@@ -21,10 +21,10 @@ int bioServer() {
      构建服务端socket地址（最关键的就是ip地址和端口号），sockaddr_in的数据结构：
      struct sockaddr_in {
          __uint8_t       sin_len;
-         sa_family_t     sin_family;
-         in_port_t       sin_port;
-         struct  in_addr sin_addr;
-         char            sin_zero[8];
+         sa_family_t     sin_family;    地址类型（一般为ipv4、ipv6）
+         in_port_t       sin_port;      2字节端口号
+         struct  in_addr sin_addr;      4字节ip地址
+         char            sin_zero[8];   8字节填充
      }
      */
     sockaddr_in serverAddr = {};
@@ -56,7 +56,7 @@ int bioServer() {
         /**
          accept函数从已完成连接的队列中取走一个套接字，如果该队列为空，则accept函数阻塞
          accept函数的返回值称为已连接套接字文件描述符，这样就建立一个完整的TCP连接
-         源IP地址，源端口号，目的IP地址，目的端口号都是唯一确定
+         源IP地址，源端口号，目的IP地址，目的端口号都是唯一确定的
          服务器每次接受连接请求时都会创建一次已连接套接字，它只存在于服务器为一个客户端服务的过程中
          */
         connected_sock = accept(sock, (sockaddr*) &clientAddr, &nAddrLen);
