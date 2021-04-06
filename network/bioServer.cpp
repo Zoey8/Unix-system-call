@@ -51,7 +51,7 @@ int bioServer() {
     sockaddr_in clientAddr = {};
     socklen_t nAddrLen = sizeof(sockaddr_in);
     int connected_sock = -1;
-    char firstMessage[] = "Hello, I'm server! Please send messages!\n";
+    char firstMessage[] = "Hello, I'm server! Please send messages!";
     while(true){
         /**
          accept函数从已完成连接的队列中取走一个套接字，如果该队列为空，则accept函数阻塞
