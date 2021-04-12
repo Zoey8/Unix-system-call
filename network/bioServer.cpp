@@ -5,18 +5,19 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 int bioServer() {
+    int sock;
     /**
      建立一个socket，传入socket族（ipv4或ipv6），socket类型, 协议类型三个参数
      如果成功，方法会返回一个非负的文件描述符，如果返回-1代表出错
     */
-    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    printf("server创建套接字的文件描述符为：%d\n", sock);
-    if(sock == -1){
+    if((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1){
         printf("socket error\n");
         return 1;
     }
+    printf("server socket fd：%d\n", sock);
     /**
      构建服务端socket地址（最关键的就是ip地址和端口号），sockaddr_in的数据结构：
      struct sockaddr_in {
@@ -35,7 +36,7 @@ int bioServer() {
      将socket地址绑定到之前创建的socket上，成功返回0，出错返回-1
      */
     if(bind(sock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1){
-        printf("bind error\n");
+        printf("bind error: %d\n", errno);
         return 1;
     }
     /**
@@ -45,26 +46,25 @@ int bioServer() {
      listen函数的两个参数为socket的文件描述符和已连接队列的长度(与accept函数有关)
      */
     if(listen(sock, 3) == -1){
-        printf("listen error\n");
+        printf("listen error: %d\n", errno);
         return 1;
     }
     sockaddr_in clientAddr = {};
     socklen_t nAddrLen = sizeof(sockaddr_in);
-    int connected_sock = -1;
     char firstMessage[] = "Hello, I'm server! Please send messages!\n";
     while(true){
+        int connected_sock;
         /**
          accept函数从已完成连接的队列中取走一个套接字，返回文件描述符，如果该队列为空，则accept函数阻塞
          accept函数的返回值称为已连接套接字文件描述符，这样就建立一个完整的TCP连接
          源IP地址，源端口号，目的IP地址，目的端口号都是唯一确定的
          服务器每次接受连接请求时都会创建一次已连接套接字，它只存在于服务器为一个客户端服务的过程中
          */
-        connected_sock = accept(sock, (sockaddr*) &clientAddr, &nAddrLen);
-        if(connected_sock == -1){
-            printf("connect error\n");
+        if((connected_sock = accept(sock, (sockaddr*) &clientAddr, &nAddrLen)) == -1){
+            printf("connect error: %d\n", errno);
             return 1;
         }
-        printf("已连接的套接字的文件描述符为：%d\n", connected_sock);
+        printf("connected socket fd：%d\n", connected_sock);
         /**
          很明显这边要新建子进程来处理请求，以应对多个客户端的同时连接
          fork方法将会在父进程和子进程中各自返回一次
@@ -85,8 +85,8 @@ int bioServer() {
              则会导致接收缓冲区填满，由于TCP的滑动窗口和拥塞控制，接收端会阻止发送端向其发送数据。
              应用程序如果继续发送数据，最终会导致发送缓冲区无法完整存放应用程序发送的数据，write方法将会阻塞。
              */
-            if(write(connected_sock, firstMessage, sizeof(firstMessage)) < 0){
-                printf("write error\n");
+            if(write(connected_sock, firstMessage, sizeof(firstMessage)) == -1){
+                printf("write error: %d\n", errno);
                 printf("child process exit\n");
                 exit(1);
             }
@@ -113,8 +113,8 @@ int bioServer() {
                 /**
                  实现功能：服务端将客户端发送的数据原样返回给客户端
                  */
-                if(write(connected_sock, buffer, nread) < 0){
-                    printf("write error");
+                if(write(connected_sock, buffer, nread) == -1){
+                    printf("write error: %d", errno);
                     printf("child process exit\n");
                     exit(1);
                 }
