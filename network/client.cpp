@@ -24,7 +24,7 @@ int client(){
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     /**
      connect方法的作用是建立连接，字节流套接字将使用三次握手建立连接，数据报套接字则不发送任何数据
-     若连接成功则返回0，否则返回-1
+     connect方法若连接成功则返回0，否则返回-1
      */
     int ret = connect(sock, (sockaddr*) &serverAddr, sizeof(serverAddr));
     if(ret == -1){
