@@ -61,6 +61,16 @@ int bioServer() {
          服务器每次接受连接请求时都会创建一次已连接套接字，它只存在于服务器为一个客户端服务的过程中
          */
         if((connected_sock = accept(sock, (sockaddr*) &clientAddr, &nAddrLen)) == -1){
+            /**
+             我们用慢系统调用来描述那些可能永远阻塞的系统调用（函数调用），如：accept，read等
+             永远阻塞的系统调用是指调用有可能永远无法返回，多数网络函数都属于这一类
+             当一个进程阻塞于慢系统调用时捕获到一个信号，等到信号处理程序返回时，系统调用可能返回一个EINTR错误
+             有些内核会自动重启某些被中断的系统调用。为了便于移植，当我们编写一个捕获信号的程序时
+             必须对慢系统调用返回EINTR有所准备，我们要手动重启被中断的系统调用
+             */
+            if(errno == EINTR){
+                continue;
+            }
             printf("connect error: %d\n", errno);
             return 1;
         }
@@ -74,9 +84,9 @@ int bioServer() {
         int p = fork();
         /**
          当p等于0时，下面代码块为子进程执行的代码，父进程将不会执行
-         也就是说在此代码块执行完后需要手动退出，否则子进程将越出此代码块造成逻辑错误
          */
         if(p == 0){
+            close(sock);
             /**
              write方法将应用程序的数据写入TCP发送缓冲区，返回值大于或等于0时表示发送的字节数，为负则表示发送失败
              write执行成功，只是表示应用程序中的数据被成功复制到了kernel中的TCP发送缓冲区，不代表接收方已经收到数据
@@ -88,7 +98,7 @@ int bioServer() {
             if(write(connected_sock, firstMessage, sizeof(firstMessage)) == -1){
                 printf("write error: %d\n", errno);
                 printf("child process exit\n");
-                exit(1);
+                return 1;
             }
             char buffer[100];
             long nread;
@@ -104,26 +114,25 @@ int bioServer() {
                 /**
                  实现功能：客户端发送exit时，服务端断开连接
                  */
-                if(strcmp(buffer, "exit") == 0){
-                    printf("connection closed\n");
-                    close(connected_sock);
-                    printf("child process exit\n");
-                    exit(0);
+                if(strcmp(buffer, "exit") == 0 || strcmp(buffer, "exit\n") == 0){
+                    break;
                 }
                 /**
                  实现功能：服务端将客户端发送的数据原样返回给客户端
                  */
                 if(write(connected_sock, buffer, nread) == -1){
                     printf("write error: %d", errno);
-                    printf("child process exit\n");
-                    exit(1);
+                    return 1;
                 }
             }
-            printf("child process exit\n");
-            /**
-             代码块执行完毕，必须要手动退出进程
-             */
-            exit(0);
+            close(connected_sock);
+            printf("child process exit success\n");
+            return 0;
+        }else if(p > 0){
+            close(connected_sock);
+        }else{
+            printf("fork error: %d", errno);
+            return 1;
         }
     }
     return 0;
