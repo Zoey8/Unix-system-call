@@ -103,7 +103,7 @@ int bioServer() {
             char buffer[100];
             long nread;
             /**
-             read方法将TCP接收缓冲区中的内容复制到应用程序中，返回值大于或等于0时表示接收的字节数，为负则表示接收失败
+             read方法将TCP接收缓冲区中的内容复制到应用程序中，返回值大于0时表示接收的字节数，为负则表示接收失败，等于0时代表对方已经关闭连接
              当接收缓冲区为空时，read方法将会阻塞，等待发送方发送数据
              */
             while((nread = read(connected_sock, buffer, 100)) > 0){
@@ -112,21 +112,32 @@ int bioServer() {
                 }
                 printf("receive a message: %s, length: %zu\n", buffer, strlen(buffer));
                 /**
-                 实现功能：客户端发送exit时，服务端断开连接
+                 实现功能：客户端发送exit时，服务端主动断开连接
                  */
                 if(strcmp(buffer, "exit") == 0 || strcmp(buffer, "exit\n") == 0){
+                    close(connected_sock);
+                    printf("connection closed by server\n");
                     break;
                 }
                 /**
                  实现功能：服务端将客户端发送的数据原样返回给客户端
                  */
                 if(write(connected_sock, buffer, nread) == -1){
-                    printf("write error: %d", errno);
+                    printf("write error: %d\n", errno);
                     return 1;
                 }
             }
-            close(connected_sock);
-            printf("child process exit success\n");
+            if(nread < 0){
+                printf("read error: %d", errno);
+                return 1;
+            }
+            /**
+             客户端主动关闭连接，服务端的read函数将返回0
+             */
+            if(nread == 0){
+                close(connected_sock);
+                printf("connection closed by client\n");
+            }
             return 0;
         }else if(p > 0){
             close(connected_sock);
