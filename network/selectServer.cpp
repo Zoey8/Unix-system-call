@@ -7,6 +7,10 @@
 #include <unistd.h>
 #include <errno.h>
 
+/**
+ 注意：无论是select、poll还是epoll，都不是具有并发能力的服务器
+ 仅仅只是IO复用，也可以被看做网络通信中的时分复用
+ */
 int selectServer(){
     int sock;
     if((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1){
@@ -75,42 +79,42 @@ int selectServer(){
                 }
             }
             __DARWIN_FD_SET(connected_sock, &read_set);
-            for(int i = 0; i <= max_index; ++i){
-                int connected_sock;
-                if((connected_sock = connected_socks[i]) < 0){
-                    continue;
-                }
-                char buffer[100];
-                long nread;
-                if(__DARWIN_FD_ISSET(connected_sock, &read_set)){
-                    while(true){
-                        if((nread = read(connected_sock, buffer, sizeof(buffer))) == 0){
-                            close(connected_sock);
-                            printf("connection closed by client\n");
-                            __DARWIN_FD_CLR(connected_sock, &read_set);
-                            connected_socks[i] = -1;
-                            break;
-                        }else if(nread < 0){
-                            printf("read error: %d", errno);
+        }
+        for(int i = 0; i <= max_index; ++i){
+            int connected_sock;
+            if((connected_sock = connected_socks[i]) < 0){
+                continue;
+            }
+            char buffer[100];
+            long nread;
+            if(__DARWIN_FD_ISSET(connected_sock, &read_set)){
+                while(true){
+                    if((nread = read(connected_sock, buffer, sizeof(buffer))) == 0){
+                        close(connected_sock);
+                        printf("connection closed by client\n");
+                        __DARWIN_FD_CLR(connected_sock, &read_set);
+                        connected_socks[i] = -1;
+                        break;
+                    }else if(nread < 0){
+                        printf("read error: %d", errno);
+                        return 1;
+                    }else{
+                        if(buffer[nread] != '\0'){
+                            buffer[nread] = '\0';
+                        }
+                        printf("receive a message: %s, length: %zu\n", buffer, strlen(buffer));
+                        /**
+                         实现功能：服务端将客户端发送的数据原样返回给客户端
+                         */
+                        if(write(connected_sock, buffer, nread) == -1){
+                            printf("write error: %d\n", errno);
                             return 1;
-                        }else{
-                            if(buffer[nread] != '\0'){
-                                buffer[nread] = '\0';
-                            }
-                            printf("receive a message: %s, length: %zu\n", buffer, strlen(buffer));
-                            /**
-                             实现功能：服务端将客户端发送的数据原样返回给客户端
-                             */
-                            if(write(connected_sock, buffer, nread) == -1){
-                                printf("write error: %d\n", errno);
-                                return 1;
-                            }
                         }
                     }
                 }
-                if(--ready_num == 0){
-                    break;
-                }
+            }
+            if(--ready_num == 0){
+                break;
             }
         }
     }
