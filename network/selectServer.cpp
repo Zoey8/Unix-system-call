@@ -166,7 +166,3 @@ int selectServer(){
     }
     return 0;
 }
-
-int main(){
-    return selectServer();
-}
