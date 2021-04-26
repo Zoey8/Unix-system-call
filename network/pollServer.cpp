@@ -77,27 +77,25 @@ int pollServer(){
             char buffer[100];
             long nread;
             if(connected_socks[i].revents & POLLRDNORM){
-                while(true){
-                    if((nread = read(connected_sock, buffer, sizeof(buffer))) == 0){
-                        close(connected_sock);
-                        printf("connection closed by client\n");
-                        connected_socks[i].fd = -1;
-                        break;
-                    }else if(nread < 0){
-                        printf("read error: %d", errno);
+                if((nread = read(connected_sock, buffer, sizeof(buffer))) == 0){
+                    close(connected_sock);
+                    printf("connection closed by client\n");
+                    connected_socks[i].fd = -1;
+                    break;
+                }else if(nread < 0){
+                    printf("read error: %d", errno);
+                    return 1;
+                }else{
+                    if(buffer[nread] != '\0'){
+                        buffer[nread] = '\0';
+                    }
+                    printf("receive a message: %s, length: %zu\n", buffer, strlen(buffer));
+                    /**
+                     实现功能：服务端将客户端发送的数据原样返回给客户端
+                     */
+                    if(write(connected_sock, buffer, nread) == -1){
+                        printf("write error: %d\n", errno);
                         return 1;
-                    }else{
-                        if(buffer[nread] != '\0'){
-                            buffer[nread] = '\0';
-                        }
-                        printf("receive a message: %s, length: %zu\n", buffer, strlen(buffer));
-                        /**
-                         实现功能：服务端将客户端发送的数据原样返回给客户端
-                         */
-                        if(write(connected_sock, buffer, nread) == -1){
-                            printf("write error: %d\n", errno);
-                            return 1;
-                        }
                     }
                 }
                 if(--ready_num == 0){
