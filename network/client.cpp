@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <cstdio>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -49,5 +49,4 @@ int client(){
             return 1;
         }
     }
-    return 0;
 }

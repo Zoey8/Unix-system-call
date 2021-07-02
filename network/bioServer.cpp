@@ -1,11 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
-#include <errno.h>
+#include <cerrno>
 
 int bioServer() {
     int sock;
@@ -28,14 +27,14 @@ int bioServer() {
          char            sin_zero[8];   8字节填充
      }
      */
-    sockaddr_in serverAddr = {};
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(8080);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    sockaddr_in server_addr = {};
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(8080);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
     /**
      将socket地址绑定到之前创建的socket上，成功返回0，出错返回-1
      */
-    if(bind(sock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1){
+    if(bind(sock, (sockaddr*) &server_addr, sizeof(server_addr)) == -1){
         printf("bind error: %d\n", errno);
         return 1;
     }
@@ -49,9 +48,9 @@ int bioServer() {
         printf("listen error: %d\n", errno);
         return 1;
     }
-    sockaddr_in clientAddr = {};
-    socklen_t nAddrLen = sizeof(sockaddr_in);
-    char firstMessage[] = "Hello, I'm server! Please send messages!\n";
+    sockaddr_in client_addr = {};
+    socklen_t client_addr_length = sizeof(sockaddr_in);
+    char first_message[] = "Hello, I'm server! Please send messages!\n";
     while(true){
         int connected_sock;
         /**
@@ -60,7 +59,7 @@ int bioServer() {
          源IP地址，源端口号，目的IP地址，目的端口号都是唯一确定的
          服务器每次接受连接请求时都会创建一次已连接套接字，它只存在于服务器为一个客户端服务的过程中
          */
-        if((connected_sock = accept(sock, (sockaddr*) &clientAddr, &nAddrLen)) == -1){
+        if((connected_sock = accept(sock, (sockaddr*) &client_addr, &client_addr_length)) == -1){
             /**
              我们用慢系统调用来描述那些可能永远阻塞的系统调用（函数调用），如：accept，read等
              永远阻塞的系统调用是指调用有可能永远无法返回，多数网络函数都属于这一类
@@ -95,7 +94,7 @@ int bioServer() {
              则会导致接收缓冲区填满，由于TCP的滑动窗口和拥塞控制，接收端会阻止发送端向其发送数据。
              应用程序如果继续发送数据，最终会导致发送缓冲区无法完整存放应用程序发送的数据，write方法将会阻塞。
              */
-            if(write(connected_sock, firstMessage, sizeof(firstMessage)) == -1){
+            if(write(connected_sock, first_message, sizeof(first_message)) == -1){
                 printf("write error: %d\n", errno);
                 printf("child process exit\n");
                 return 1;
@@ -146,5 +145,4 @@ int bioServer() {
             return 1;
         }
     }
-    return 0;
 }

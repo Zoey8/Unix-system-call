@@ -1,16 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
-#include <errno.h>
+#include <cerrno>
 #include <poll.h>
 #define MAX_CONNECTED_SOCKS 2000
 
 /**
- 注意：无论是select、poll还是epoll，都不是具有并行能力的服务器
+ 注意：无论是select、poll还是epoll（kqueue），使用单进程时，都不是具有并行能力的服务器
  仅仅只是IO复用，也可以被看做网络通信中的时分复用
  */
 int pollServer(){
@@ -20,11 +19,11 @@ int pollServer(){
         return 1;
     }
     printf("server socket fd：%d\n", sock);
-    sockaddr_in serverAddr = {};
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(8080);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    if(bind(sock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1){
+    sockaddr_in server_addr = {};
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(8080);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    if(bind(sock, (sockaddr*) &server_addr, sizeof(server_addr)) == -1){
         printf("bind error: %d\n", errno);
         return 1;
     }
@@ -32,6 +31,9 @@ int pollServer(){
         printf("listen error: %d\n", errno);
         return 1;
     }
+    /**
+     
+     */
     struct pollfd connected_socks[MAX_CONNECTED_SOCKS];
     connected_socks[0].fd = sock;
     connected_socks[0].events = POLLRDNORM;
@@ -39,9 +41,9 @@ int pollServer(){
     for(int i = 1; i < MAX_CONNECTED_SOCKS; ++i){
         connected_socks[i].fd = -1;
     }
-    sockaddr_in clientAddr = {};
-    socklen_t nAddrLen = sizeof(sockaddr_in);
-    char firstMessage[] = "Hello, I'm server! Please send messages!\n";
+    sockaddr_in client_addr = {};
+    socklen_t client_addr_length = sizeof(sockaddr_in);
+    char first_message[] = "Hello, I'm server! Please send messages!\n";
     while(true){
         int ready_num = poll(connected_socks, max_index + 1, -1);
         if(ready_num < 0){
@@ -49,9 +51,9 @@ int pollServer(){
             return 1;
         }
         if(connected_socks[0].revents & POLLRDNORM){
-            int connected_sock = accept(sock, (sockaddr*) &clientAddr, &nAddrLen);
+            int connected_sock = accept(sock, (sockaddr*) &client_addr, &client_addr_length);
             printf("connected socket fd：%d\n", connected_sock);
-            if(write(connected_sock, firstMessage, sizeof(firstMessage)) == -1){
+            if(write(connected_sock, first_message, sizeof(first_message)) == -1){
                 printf("write error: %d\n", errno);
                 return 1;
             }
@@ -104,5 +106,4 @@ int pollServer(){
             }
         }
     }
-    return 0;
 }

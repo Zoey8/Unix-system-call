@@ -1,14 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
-#include <errno.h>
+#include <cerrno>
 
 /**
- 注意：无论是select、poll还是epoll，使用单进程时，都不是具有并行能力的服务器
+ 注意：无论是select、poll还是epoll（kqueue），使用单进程时，都不是具有并行能力的服务器
  他们实现的功能仅仅只是IO复用，也可以被看做网络通信中的时分复用
  */
 int selectServer(){
@@ -18,11 +17,11 @@ int selectServer(){
         return 1;
     }
     printf("server socket fd：%d\n", sock);
-    sockaddr_in serverAddr = {};
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(8080);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    if(bind(sock, (sockaddr*) &serverAddr, sizeof(serverAddr)) == -1){
+    sockaddr_in server_addr = {};
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(8080);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    if(bind(sock, (sockaddr*) &server_addr, sizeof(server_addr)) == -1){
         printf("bind error: %d\n", errno);
         return 1;
     }
@@ -68,9 +67,9 @@ int selectServer(){
      将创建的被动套接字加入读事件监听集合
      */
     __DARWIN_FD_SET(sock, &all_listend_read_set);
-    sockaddr_in clientAddr = {};
-    socklen_t nAddrLen = sizeof(sockaddr_in);
-    char firstMessage[] = "Hello, I'm server! Please send messages!\n";
+    sockaddr_in client_addr = {};
+    socklen_t client_addr_length = sizeof(sockaddr_in);
+    char first_message[] = "Hello, I'm server! Please send messages!\n";
     while(true){
         /**
          巧妙的传参给read_set，保证all_listend_read_set不会受select函数改变
@@ -96,13 +95,16 @@ int selectServer(){
          FD_ISSET函数用来判断一个文件描述符是否属于一个集合，这里是判断之前创建的被动套接字是否处于可读状态
          */
         if(__DARWIN_FD_ISSET(sock, &read_ready_set)){
-            int connected_sock = accept(sock, (sockaddr*) &clientAddr, &nAddrLen);
+            int connected_sock = accept(sock, (sockaddr*) &client_addr, &client_addr_length);
             printf("connected socket fd：%d\n", connected_sock);
-            if(write(connected_sock, firstMessage, sizeof(firstMessage)) == -1){
+            if(write(connected_sock, first_message, sizeof(first_message)) == -1){
                 printf("write error: %d\n", errno);
                 return 1;
             }
             for(int i = 0; i < __DARWIN_FD_SETSIZE; ++i){
+                /**
+                 将新建立连接的已连接套接字加入到列表中
+                 */
                 if(connected_socks[i] == -1){
                     connected_socks[i] = connected_sock;
                     if(connected_sock > max_fd){
@@ -112,6 +114,13 @@ int selectServer(){
                         max_index = i;
                     }
                     break;
+                }
+                /**
+                 如果在列表中未找到空位，则表示被监听的文件描述符达到最大值1024
+                 */
+                if(i == __DARWIN_FD_SETSIZE){
+                    printf("too many connected sockets");
+                    return 1;
                 }
             }
             /**
