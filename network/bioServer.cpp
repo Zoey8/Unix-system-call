@@ -96,7 +96,7 @@ int bioServer() {
              */
             if(write(connected_sock, first_message, sizeof(first_message)) == -1){
                 printf("write error: %d\n", errno);
-                printf("child process exit\n");
+                printf("child thread exit\n");
                 return 1;
             }
             char buffer[100];
