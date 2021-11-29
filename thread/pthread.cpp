@@ -15,6 +15,10 @@ void* myThread2(void* args){
     pthread_exit(nullptr);
 }
 
+/**
+ * 线程是轻量级进程(light-weight process)，也有PCB，创建线程使用的底层函数和进程一样，都是clone
+ * 从内核角度看进程和线程是一样的，都有各自不同的PCB
+ */
 int start(){
     pthread_t id1, id2;
     char c1[] = "thread1", c2[] = "thread2";
@@ -41,10 +45,5 @@ int start(){
     pthread_join(id1, nullptr);
     pthread_join(id2, nullptr);
     printf("all thread done!\n");
-    return 0;
-}
-
-int main(){
-    start();
     return 0;
 }
